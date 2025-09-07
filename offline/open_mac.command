@@ -19,38 +19,57 @@ fi
 
 cd "$(cd "$(dirname "$0")" && pwd)"
 
+# ---- AUTO-DISCOVER THE TAR IF NEEDED ---------------------------------------
+if [[ ! -f "$TAR" ]]; then
+  # search order: script dir, then ~/Downloads
+  candidates=()
+  for dir in "." "$HOME/Downloads"; do
+    # pick common names first, then any *.tar / *.tar.gz
+    while IFS= read -r -d '' f; do candidates+=("$f"); done < <(
+      find "$dir" -maxdepth 1 -type f \
+        \( -name 'immgent*app*.tar' -o -name 'immgent*app*.tar.gz' \
+           -o -name 'immgent*.tar'   -o -name 'immgent*.tar.gz' \
+           -o -name '*.tar'          -o -name '*.tar.gz' \) \
+        -print0 2>/dev/null
+    )
+  done
+
+  if (( ${#candidates[@]} == 0 )); then
+    echo "Could not find an image archive (.tar or .tar.gz)."
+    echo "Put it next to this script or pass the path as the first argument."
+    exit 1
+  fi
+
+  # choose the newest by modification time
+  IFS=$'\n' read -r -d '' -a sorted < <(ls -t "${candidates[@]}" 2>/dev/null && printf '\0')
+  unset IFS
+  TAR="${sorted[0]}"
+  echo "Auto-detected archive: $TAR"
+fi
+# ---------------------------------------------------------------------------
+
 echo "Loading image from: $TAR"
 
 LOAD_OUT=""
 if command -v pv >/dev/null 2>&1; then
-  # Byte-accurate progress bar (pv prints to stderr; docker load output is captured)
-  if [[ ! -f "$TAR" ]]; then
-    echo "File not found: $TAR"
-    exit 1
-  fi
+  # Byte-accurate progress bar (works for .tar and .tar.gz)
   LOAD_OUT="$(
     set -o pipefail
     pv -ptebr "$TAR" | docker load
   )" || { echo -e "\n docker load failed"; exit 1; }
-  echo    # newline after pv's progress line
+  echo
 else
-  # Fallback: spinner while docker loads; still capture stdout to parse image name
+  # Fallback spinner
   tmp_out="$(mktemp)"
-  # run docker load in background, capture exit after spinner
   ( docker load -i "$TAR" >"$tmp_out" ) &
   load_pid=$!
-
-  # spinner
-  spin='-\|/'
-  i=0
+  spin='-\|/'; i=0
   while kill -0 "$load_pid" 2>/dev/null; do
     i=$(( (i+1) % 4 ))
     printf "\rLoading (no 'pv' found)… %s" "${spin:$i:1}"
     sleep 0.1
   done
-  printf "\r"  # clear spinner line
-
-  # get exit code and output
+  printf "\r"
   if ! wait "$load_pid"; then
     echo "docker load failed"
     rm -f "$tmp_out"
@@ -65,8 +84,7 @@ echo "$LOAD_OUT"
 # Parse the image name (e.g., 'dzemmour/immgent_app1:latest')
 IMAGE="$(sed -n 's/^Loaded image: //p' <<<"$LOAD_OUT" | tail -n1)"
 if [[ -z "$IMAGE" ]]; then
-  # Fallback if the tar was saved from an image ID (no repo:tag)
-  IMAGE="immgent_app1-app:latest"
+  IMAGE="immgent_app1-app:latest"   # fallback if tar was saved from an image ID
   echo "Could not parse image name from tar. Falling back to: $IMAGE"
 fi
 
@@ -76,13 +94,13 @@ docker rm -f "$APP_NAME" >/dev/null 2>&1 || true
 echo "Starting container '$APP_NAME' from image '$IMAGE' ..."
 docker run -d --rm \
   --name "$APP_NAME" \
-  --platform=linux/amd64 \
   -p "${HOST_PORT}:3838" \
   --memory="${MEM}" --shm-size="${SHM}" --ulimit nofile="${NOFILE}" \
   -e SHINY_LOG_STDOUT=1 -e SHINY_LOG_STDERR=1 \
   "$IMAGE" >/dev/null
+# (No --platform flag: running a *local* image doesn’t need it)
 
-# Wait for the server to be reachable
+# Wait for the server
 echo "Waiting for Shiny at http://localhost:${HOST_PORT}${OPEN_PATH} ..."
 for i in {1..60}; do
   if curl -fsS "http://localhost:${HOST_PORT}${OPEN_PATH}" >/dev/null 2>&1; then

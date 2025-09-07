@@ -11,10 +11,10 @@ WORKDIR /srv/shiny-server
 COPY . /srv/shiny-server/
 
 # Install runtime R deps (no renv, no BPCells)
-#RUN R -e 'install.packages(c("shiny","Seurat","dplyr","ggplot2","DT", "ZemmourLib"))'
-RUN R -q -e 'options(Ncpus=parallel::detectCores()); \
-             install.packages(c("shiny","Seurat","dplyr","ggplot2","DT","remotes"), repos="https://cran.r-project.org"); \
-             remotes::install_github("dzemmour/ZemmourLib", dependencies = FALSE, upgrade="never")'
+RUN R -e 'install.packages(c("shiny","Seurat","dplyr","ggplot2","DT"), repos="https://cran.r-project.org")'
+#RUN R -q -e 'options(Ncpus=parallel::detectCores()); \
+#             install.packages(c("shiny","Seurat","dplyr","ggplot2","DT","remotes"), repos="https://cran.r-project.org"); \
+#             remotes::install_github("dzemmour/ZemmourLib", dependencies = FALSE, upgrade="never")'
 
 RUN chown -R shiny:shiny /srv/shiny-server
 EXPOSE 3838

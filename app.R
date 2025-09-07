@@ -4,14 +4,19 @@ options(shiny.maxRequestSize = 4096*4096^2)  # ~1 GB upload limit
 
 suppressPackageStartupMessages({
     library(shiny); library(Seurat); library(ggplot2); library(dplyr); library(DT)
-    has_zlib <- requireNamespace("ZemmourLib", quietly = TRUE)
+    # has_zlib <- requireNamespace("ZemmourLib", quietly = TRUE)
 })
 
-if (has_zlib) {
-    mypal_level2 <- ZemmourLib::immgent_colors$level2
-} else {
-    mypal_level2 <- scales::hue_pal()(length(unique(rv$filt_obj$annotation_level2)))
-}
+# if (has_zlib) {
+#     mypal_level2 <- ZemmourLib::immgent_colors$level2
+# } else {
+#     mypal_level2 <- scales::hue_pal()(length(unique(rv$filt_obj$annotation_level2)))
+# }
+
+# write.table(data.frame(level2 = names(ZemmourLib::immgent_colors$level2_option2), color = ZemmourLib::immgent_colors$level2_option2), file = "annotation_level2_colors.csv", row.names = F, sep = ",")
+mypal = read.csv(file = "annotation_level2_colors.csv", header = T, sep = ",", as.is = T)
+mypal_level2 = mypal[,2]
+names(mypal_level2) = mypal[,1]
 
 # ---- UI ----
 ui <- fluidPage(

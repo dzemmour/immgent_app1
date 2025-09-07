@@ -1,0 +1,136 @@
+---
+title: "Shiny Docker Guide"
+output: html_document
+date: "2025-09-05"
+editor_options: 
+  chunk_output_type: console
+---
+
+Files in the folder app:
+app.R #shniy app
+data #folder with data
+start.command #for MAC
+start.bat #for windows
+docker-compose.yml
+Dockerfile
+.dockerignire
+
+Install the libraries and make sure the app in working
+```{r}
+setwd('~/google_drive_uchicago/ImmgenT/analysis/data_integration/IGT1_96/immgenT_Apps/immgenT_App1_v0.2')
+library(shiny)
+library(Seurat)
+library(ggplot2)
+library(dplyr)
+library(DT)
+library(ZemmourLib)
+
+shiny::runApp("app.R", launch.browser = TRUE)
+
+```
+
+**Build Docker container**
+1. Install Docker Desktop
+2. Local Build with compose (recommended): first time take a lot of time. BUILDS what is called an IMAGE (a template)
+```{bash}
+cd ~/google_drive_uchicago/ImmgenT/analysis/data_integration/IGT1_96/immgenT_Apps/immgenT_App1_v0.2
+#docker build --no-cache -t immgent-app1 .
+docker compose build --no-cache
+```
+3. create/Run the app --> what is called a CONTAINER
+```{bash}
+docker compose up #--force-recreate
+```
+Then visit: <http://localhost:3838/app/>
+
+For next times: Double-click:
+- macOS: double-click `start.command`
+- Windows: double-click `start.bat`
+
+3. Stop it
+
+- If using compose: press `Ctrl + C` in that terminal (or `docker compose down`).
+- If using `docker run`: `Ctrl + C` stops the container.
+
+**Update after code changes**
+```{bash}
+docker compose build && docker compose up
+```
+
+**Tips & Troubleshooting**
+
+Validate your compose file after edits:
+```{bash}
+docker compose config
+docker compose ps #Confirm the new container is running
+docker compose logs -f
+docker images #lists images
+docker ps #lists containers
+
+```
+
+**Sharing on Docker Hub**
+1. Create a Docker Hub repo (public)
+2. 
+```{bash}
+cd appfolder
+docker build --platform=linux/amd64 -t dzemmour/immgent_app1:0.1 .
+
+#doesn't work Optional but recommended for Apple Silicon + Windows users) build a multi-arch image so it runs natively on both Intel/AMD and M1/M2
+docker buildx create --use
+docker buildx build --platform linux/amd64,linux/arm64 -t dzemmour/immgent_app1:0.1 --push .
+
+#Optionally also tag :latest and push it so users can just pull the default
+docker tag dzemmour/immgent_app1:0.1 dzemmour/immgent_app1:latest
+docker push dzemmour/immgent_app1:latest
+
+
+# users run:
+# docker run --rm -p 3838:3838 yourdockerhub/immgent-app1:latest
+```
+
+**Version with arm64 tag**
+RShniy server only works with AMD64 --> build doesn't use RShiny Server but just RShiny --> a few differences on how packages are installed and the dirwctory for data
+1. first need Dockerfile.arm64 
+2. local build
+```{bash}
+# On an M1/M2/M3 Mac, this will default to arm64; you can be explicit:
+docker build --platform linux/arm64 -f Dockerfile.arm64 -t dzemmour/immgent_app1:arm64 .
+
+```
+3. Run
+```{bash}
+docker run -d --name immgent-app1-arm -p 3838:3838 -v "$PWD/data":/app/data dzemmour/immgent_app1:arm64
+# then visit http://localhost:3838
+
+```
+
+publish the arm tag
+```{bash}
+docker login
+docker images
+docker tag dzemmour/immgent_app1:arm64 dzemmour/immgent_app1:latestarm64
+docker push dzemmour/immgent_app1:latestarm64
+```
+
+**Sharing the image Offline**
+
+Save image
+```{bash}
+docker compose images
+docker images
+# use the EXACT repo:tag you want
+docker save immgent_app1-app:latest -o immgent_app1-app_latest.tar
+```
+on target machine of a colleague
+1. install Docker Desktop
+2. load the app
+```{bash}
+docker load -i immgent_app1-app_latest.tar
+docker run --rm -p 3838:3838 immgent_app1-app:latest
+```
+
+**TIPS**
+- Large data / memory: Increase Docker Desktop memory (Preferences → Resources) if loading huge objects.
+- Port already in use: Change the left side of `-p 3838:3838` to another number, e.g., `-p 8080:3838` and open <http://localhost:8080/app/>.
+- Linux users: Replace `open` (macOS) with `xdg-open` if you create a launcher.

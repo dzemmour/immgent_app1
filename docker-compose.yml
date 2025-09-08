@@ -1,0 +1,16 @@
+services:
+  app:
+    platform: linux/amd64
+    build: .
+    ports:
+      - "3838:3838"
+    mem_limit: 24g           # hard cap; raise/lower to taste
+    mem_reservation: 8g      # soft reservation
+    shm_size: "2g"           # enlarge /dev/shm (helps some libs)
+    ulimits:
+      nofile: 1048576
+    volumes:
+      - ./data:/srv/shiny-server/data   # lets you drop demo .rds files
+    environment:
+      - SHINY_LOG_STDOUT=1
+      - SHINY_LOG_STDERR=1

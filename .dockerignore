@@ -1,0 +1,13 @@
+.git
+.Rproj.user
+.Rhistory
+.RData
+.DS_Store
+renv/library
+renv/staging
+*.rds
+*.RData
+*.tar
+*.tar.gz
+*.Rproj
+immgen_app1/

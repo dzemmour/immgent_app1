@@ -1,0 +1,10 @@
+.Rproj.user
+.Rhistory
+.RData
+.Ruserdata
+*.log
+.DS_store
+data/
+immgent_app1/*.tar
+*.tar
+*tar.gz

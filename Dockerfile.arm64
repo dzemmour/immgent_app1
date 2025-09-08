@@ -1,0 +1,22 @@
+# Dockerfile.arm64 — native Apple Silicon (arm64) build, no Shiny Server
+FROM --platform=linux/arm64/v8 rocker/r-ver:4.4.2
+
+# System libs Seurat/plotting often need
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    libcurl4-openssl-dev libssl-dev libxml2-dev libgit2-dev \
+    libharfbuzz-dev libfribidi-dev libfreetype6-dev libpng-dev \
+    libtiff5-dev libjpeg-dev libfontconfig1-dev libglpk-dev \
+ && rm -rf /var/lib/apt/lists/*
+
+WORKDIR /app
+# Copy the whole project (app file, renv*, renv.lock, data/, etc.)
+COPY . /app/
+
+# Install packages:
+# - If renv.lock exists -> restore exact versions (recommended)
+# - Else -> install a minimal set so the app runs
+RUN R -e 'if (file.exists("renv.lock")) { install.packages("renv"); renv::restore(prompt=FALSE) } else { install.packages(c("shiny","Seurat","dplyr","ggplot2","DT","jsonlite")) }'
+
+EXPOSE 3838
+# Run the app directly via R (no Shiny Server)
+CMD ["R", "-e", "options(shiny.port=3838, shiny.host='0.0.0.0'); if (file.exists('renv/activate.R')) source('renv/activate.R'); shiny::runApp('/app')"]

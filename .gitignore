@@ -2,9 +2,12 @@
 .Rhistory
 .RData
 .Ruserdata
+.Rprofile
 *.log
 .DS_store
 data/
 immgent_app1/*.tar
 *.tar
 *tar.gz
+Rshiny_deployment/immgent_app1/rsconnect/
+Rshiny_deployment/immgent_app1/renv*

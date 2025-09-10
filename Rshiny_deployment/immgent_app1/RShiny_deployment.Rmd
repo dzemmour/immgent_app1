@@ -1,0 +1,108 @@
+---
+title: "RShiny"
+output: html_document
+date: "2025-09-05"
+editor_options: 
+  chunk_output_type: console
+---
+
+```{r}
+install.packages(c("rsconnect", "shiny", "Seurat", "dplyr", "ggplot2", "DT"))
+# Optional but recommended for reproducible deployments:
+install.packages("renv")
+
+libs = c("rsconnect", "shiny", "Seurat", "dplyr", "ggplot2", "DT", "renv") 
+sapply(libs, function(x) suppressMessages(suppressWarnings(library(x, character.only = TRUE, quietly = T, warn.conflicts  = F))))
+
+setwd('/Users/david/Library/CloudStorage/GoogleDrive-zemmour@uchicago.edu/My Drive/ImmgenT/analysis/data_integration/IGT1_96/immgenT_Apps/immgent_app1/Rshiny_deployment/immgent_app1/')
+
+
+```
+
+Connect your shinyapps.io account (copy token and secret from the shinyapps.io dashboard → Tokens):
+
+```{r}
+library(rsconnect) 
+# EITHER interactive:
+# rsconnect::connectUser()   # opens a browser, pastes token/secret for you
+
+# OR non-interactive:
+# rsconnect::setAccountInfo(name = "<your-account>", token = "<TOKEN>", secret = "<SECRET>")
+rsconnect::setAccountInfo(name='davidpz', token='1B804256A96E2B32EC55AB4B61F1EA4F', secret='RcRond8aP/UmIYbKPvoZXGSORtS18emhHXT36ees')
+
+```
+
+(Official quick-start docs: deploy from IDE “Publish” button or deployApp() API.
+
+2) Prepare your app folder
+
+Create a folder, e.g. Treg_App/, with your app.R only (don’t put giant .rds data in here; users will upload at runtime).
+
+Optional: lock your package versions so Posit’s build servers install exactly what you use locally:
+
+```{r}
+# in the app folder
+renv::init()
+renv::snapshot()
+
+```
+
+3) Make your app upload-friendly & disk-backed
+
+You already set options(shiny.maxRequestSize = ...) at the top of your app.R — good. Shiny’s default is only 5 MB, so this is required for large .rds uploads.
+
+4) Deploy
+
+From R in the parent directory that contains immgenT_App1/:
+```{r}
+library(rsconnect)
+setwd("/Users/david/Library/CloudStorage/GoogleDrive-zemmour@uchicago.edu/My Drive/ImmgenT/analysis/data_integration/IGT1_96/immgenT_Apps/immgent_app1/Rshiny_deployment")
+rsconnect::deployApp(appDir = "immgent_app1", appName = "immgenT_App1")
+
+```
+
+5) Pick an instance size that fits your data
+
+On shinyapps.io (dashboard → your app → Settings → Instance Size), choose enough RAM for Seurat with uploads. Defaults are typically 1 GB (“large”). You can raise to 2 GB, 4 GB, 8 GB depending on your plan. 
+
+6) Mind these platform limits
+
+Bundle (deploy) size: the uploaded app bundle must be ≤ 1 GB on Free/Starter; up to 5 GB on higher plans. Don’t include your big .rds in the repo—have users upload it at runtime. 
+
+Upload size at runtime: governed by options(shiny.maxRequestSize=...) in your app. (Default 5 MB; raise as needed.) 
+
+**After the first deploy, you can just re-run deployApp() to update.**
+
+When you do need to touch renv
+. You changed repositories (e.g., added an R-universe for BPCells). Make sure that repo line is present in your app (e.g., .Rprofile) and then renv::snapshot() so the build server knows where to install from.
+. You added/removed/updated packages (e.g., started using BPCells, SeuratDisk, etc.).
+Install them in your app’s renv:
+```{r}
+setwd("/Users/david/Desktop/immgenT_Apps/")
+renv::install("BPCells")  # example
+renv::snapshot() #Snapshot to refresh renv.lock
+rsconnect::deployApp("immgenT_App1") 
+rsconnect::deployApp(appDir = "immgenT_App1", appName = "immgenT_App1") #Redeploy
+```
+
+if you only changed files (R code, UI, small assets) and didn’t add/remove packages, just redeploy:
+```{r}
+setwd("/Users/david/Desktop/immgenT_Apps/")
+rsconnect::deployApp(appDir = "immgenT_App1", appName = "immgenT_App1")
+renv::status()
+rsconnect::writeManifest("immgenT_App1")
+```
+
+
+Sanity checks:
+```{r}
+renv::status() #Is your lockfile out of sync?
+rsconnect::writeManifest("immgenT_App1") #Look for "appMode": "shinyapp".
+
+
+```
+
+
+
+
+
